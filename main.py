@@ -14,14 +14,13 @@ warnings.filterwarnings("ignore")
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
-kws_ko = ['하나님의 교회', '하나님의교회 세계복음선교협회', '안상홍', '어머니 하나님', '장길자']
-kws_en = ['Church of God', 'World Mission Society Church of God', 'Ahnsahnghong', 'God the Mother', 'Zahng Gil-jah']
-kws_es = ['Iglesia de Dios', 'Iglesia de Dios sociedad misionera mundial', 'Ahnsahnghong', 'Dios Madre', 'Zahng Gil-jah']
+kws = [['하나님의 교회', '하나님의교회 세계복음선교협회', '안상홍', '어머니 하나님', '장길자'],['Church of God', 'World Mission Society Church of God', 'Ahnsahnghong', 'God the Mother', 'Zahng Gil-jah'], ['Iglesia de Dios', 'Iglesia de Dios sociedad misionera mundial', 'Ahnsahnghong', 'Dios Madre', 'Zahng Gil-jah']]
 
+#카운트용 변수
+heat_count = 0
 
 params1 = {
     'api_key': '38CBEF8539454506B1DC3FED84038381',
-    'q': 'World Mission Society Church of God',
     'num' : '50',
     'hl' :"ko",
     'gl': "kr",
@@ -29,8 +28,7 @@ params1 = {
 }
 
 params2 = {
-  'api_key': '38CBEF8539454506B1DC3FED84038381',
-    'q': 'World Mission Society Church of God',
+    'api_key': '38CBEF8539454506B1DC3FED84038381',
     'num' : '50',
     'hl' : "en",
     'gl': "us",
@@ -39,7 +37,6 @@ params2 = {
 
 params3 = {
   'api_key': '38CBEF8539454506B1DC3FED84038381',
-    'q': 'World Mission Society Church of God',
     'num' : '50',
     'hl' : "es",
     'gl': "pe",
@@ -74,37 +71,15 @@ def df_to_excel_each_sheet(df, kw, f):
       with pd.ExcelWriter(f, mode='a', engine='openpyxl', if_sheet_exists="replace") as writer:
         df.to_excel(writer, index=False, sheet_name=kw)
 
-def do_api(param):
-    api_result1 = requests.get('https://api.serpwow.com/search', params1)
-    print("ko 완료")
-    api_result2 = requests.get('https://api.serpwow.com/search', params2)
-    print("us 완료")
-    api_result3 = requests.get('https://api.serpwow.com/search', params3)
-    print("es 완료")
+#################### 파일 리딩 파트 ########################
+# df3_read = pd.read_excel('our_site_all.xlsx', sheet_name=0)
 
-    data1 = api_result1.json()
-    data2 = api_result2.json()
-    data3 = api_result3.json()
+# 카운트용 변수들
 
-    organic_results1 = data1['organic_results']
-    organic_results2 = data2['organic_results']
-    organic_results3 = data3['organic_results']
-
-    organic_results_df1 = json_to_df(organic_results1)
-    organic_results_df2 = json_to_df(organic_results2)
-    organic_results_df3 = json_to_df(organic_results3)
-
-    #################### 파일 리딩 파트 ########################
-    df3_read = pd.read_excel('our_site_all.xlsx', sheet_name=0)
-
-    # 카운트용 변수들
-    heat_count = 0
-    print('시작!')
-    # #################엑셀 리딩 -> 사이트 구분 part
-    #데이터 프레임을 받아서 하나하나 따로 값을 요리한 후에 값 저장하기 위함.
+print('시작!')
 
 
-def get_occu_rate(s_result, kw,f_name, excel_p):
+def get_occu_rate(s_result, kw,f_name):
 
     # 키워드 데이터 불러들이기
     df1_read = s_result
@@ -138,22 +113,48 @@ def get_occu_rate(s_result, kw,f_name, excel_p):
             idx = idx + 1
         idx = 0
 
-    #우리 사이트가 맞는 경우에는 OS체크.
+    #우리 사이트가 맞는 경우에는 OS체크하는 루틴
     heat_count = arr1.count("OS")
-
     arr1 = pd.DataFrame(arr1, columns=['Status'])
-
     df2_read['Status'] = arr1
     df2_read['Result'] = heat_count
     df2_read['link']=df2_read['link2']
     del df2_read['link2']
 
+
+
     df_to_excel_each_sheet(df2_read, kw, f_name)
-    wb.save('target_list.xlsx')
-    print('완료!!')
+
+
+def do_api(kw, num):
+    if num == 0:
+        f_name = "한국어 결과.xlsx"
+        params1.update(q=kw)
+        api_result = requests.get('https://api.serpwow.com/search', params1)
+
+    elif num == 1:
+        f_name = "영어 결과.xlsx"
+        params2.update(q=kw)
+        api_result = requests.get('https://api.serpwow.com/search', params2)
+    else:
+        f_name = "서어 결과.xlsx"
+        params1.update(q=kw)
+        api_result = requests.get('https://api.serpwow.com/search', params3)
+    data = api_result.json()
+
+    organic_results = data['organic_results']
+
+    organic_results_df1 = json_to_df(organic_results)
+
+    get_occu_rate(organic_results_df1, kw, f_name)
+
+
 
 for x in range(3):
-    print(1);
+    for kw in kws[x]:
+        print(kw)
+        do_api(kw,x)
+
 
 # get_occu_rate(organic_results_df1, 'World Mission Society Church of God', '81_영어_[맨섬].xlsx', 83)
 # get_occu_rate(organic_results_df1, 'World Mission Society Church of God', '104_영어_[저지섬].xlsx',104)
